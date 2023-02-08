@@ -50,6 +50,7 @@ public class LiWindow {
         nomal.alpha = 0.5f;
         ((Activity) mContext).getWindow().setAttributes(nomal);
         mPopupWindow.setOnDismissListener(closeDismiss);
+
     }
 
     public static void setBackgroundAlpha(float bgAlpha,Context mContext){

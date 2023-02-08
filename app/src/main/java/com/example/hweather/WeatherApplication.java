@@ -59,7 +59,6 @@ public class WeatherApplication extends BaseApplication {
             @Override
             public void onActivityStarted(Activity activity) {
                 sActivity = activity;
-
             }
 
             @Override

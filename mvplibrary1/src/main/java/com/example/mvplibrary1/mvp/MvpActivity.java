@@ -22,6 +22,5 @@ public abstract class MvpActivity<P extends BasePresenter> extends BaseActivity 
         super.onDestroy();
         mPresent.detach((BaseView) this);
     }
-
 }
 

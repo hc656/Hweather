@@ -2,16 +2,20 @@ package com.example.hweather;
 
 
 import android.Manifest;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -41,6 +45,8 @@ import com.example.hweather.bean.LifestyleResponse;
 import com.example.hweather.bean.NewSearchCityResponse;
 import com.example.hweather.bean.NowResponse;
 import com.example.hweather.contract.WeatherContract;
+import com.example.hweather.eventbus.SearchCityEvent;
+import com.example.hweather.ui.SearchCityActivity;
 import com.example.hweather.utils.ToastUtils;
 import com.example.hweather.utils.WeatherUtil;
 import com.example.mvplibrary1.mvp.MvpActivity;
@@ -51,6 +57,10 @@ import com.scwang.smartrefresh.layout.SmartRefreshLayout;
 import com.scwang.smartrefresh.layout.api.RefreshLayout;
 import com.scwang.smartrefresh.layout.listener.OnRefreshListener;
 import com.tbruyelle.rxpermissions2.RxPermissions;
+
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -103,8 +113,8 @@ public class MainActivity extends MvpActivity<WeatherContract.WeatherPresenter> 
     TextView tvWindDirection;//风向
     @BindView(R.id.tv_wind_power)
     TextView tvWindPower;//风力
-    @BindView(R.id.iv_city_select)
-    ImageView ivCitySelect;//城市图标ID
+    @BindView(R.id.iv_add)
+    ImageView ivAdd;//城市图标ID
     @BindView(R.id.bg)
     LinearLayout bg;//背景图
     @BindView(R.id.refresh)
@@ -151,10 +161,9 @@ public class MainActivity extends MvpActivity<WeatherContract.WeatherPresenter> 
     DailyAdapter mAdapterDailyV7;//天气预报适配器
     List<HourlyResponse.HourlyBean> hourlyListV7 = new ArrayList<>();//逐小时天气预报数据列表
     HourlyAdapter mAdapterHourlyV7;//逐小时预报适配器
-
+    private PopupWindow mPopupWindow;
 
     private void initList() {
-
         //天气预报  7天
         mAdapterDailyV7 = new DailyAdapter(R.layout.item_weather_forecast_list, dailyListV7);
         rv.setLayoutManager(new LinearLayoutManager(this));
@@ -167,13 +176,19 @@ public class MainActivity extends MvpActivity<WeatherContract.WeatherPresenter> 
         rvHourly.setAdapter(mAdapterHourlyV7);
     }
 
-
     @Override
     public void initData(Bundle savedInstanceState) {
         initList();
         LocationClient.setAgreePrivacy(true);//不加会因为隐私政策无法使用app
         rxPermissions = new RxPermissions(this);//实例化这个权限请求框架，否则会报错
         permissionVersion();//权限判断
+        mPopupWindow = new PopupWindow(this);
+        EventBus.getDefault().register(this);
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onEvent(SearchCityEvent event){
+        mPresent.newSearchCity(event.mLocation);
     }
 
 
@@ -239,11 +254,12 @@ public class MainActivity extends MvpActivity<WeatherContract.WeatherPresenter> 
             //获取区/县
             district = location.getDistrict();
             city = location.getCity();
-            Log.d(TAG, "onReceiveLocation: "+district);
+           // Log.d(TAG, "onReceiveLocation: "+district);
             Toast.makeText(MainActivity.this,district,Toast.LENGTH_LONG).show();
             //在数据请求前放在在加载等待弹窗,返回结果后关闭
             showLoadingDialog();
             //获取区域id
+            if(district == null)district = "北京";
             mPresent.newSearchCity(district);
 
             //下拉刷新
@@ -260,21 +276,22 @@ public class MainActivity extends MvpActivity<WeatherContract.WeatherPresenter> 
     @Override
     public void getNewSearchCityResult(Response<NewSearchCityResponse> response) {
         refresh.finishRefresh();//关闭刷新
-        dismissLoadingDialog();//关闭弹窗
         if (mLocationClient != null) {
             mLocationClient.stop();//数据返回后关闭定位
         }
+        Log.d("hmc", "getNewSearchCityResult1: "+locationId);
         if (response.body() != null) {
             if (response.body().getLocation() != null && response.body().getLocation().size() > 0) {
                 tvCity.setText(response.body().getLocation().get(0).getName());//城市
                 locationId = response.body().getLocation().get(0).getId();//城市Id
-                Log.d("OkHttp", "getNewSearchCityResult: "+locationId);
+                Log.d("hmc", "getNewSearchCityResult: "+locationId);
                 showLoadingDialog();
                 mPresent.nowWeather(locationId);//查询实况天气
                 mPresent.dailyWeather(locationId);//查询天气预报
                 mPresent.hourlyWeather(locationId);//查询逐小时天气预报
                 mPresent.airNowWeather(locationId);//空气质量
                 mPresent.lifestyle(locationId);//生活指数
+                Log.d("hmc", "getNewSearchCityResult: "+locationId);
             } else {
                 ToastUtils.showShortToast(context, "数据为空");
             }
@@ -449,6 +466,43 @@ public class MainActivity extends MvpActivity<WeatherContract.WeatherPresenter> 
         super.onDestroy();
     }
 
+
+    private void showAddWindow() {
+        // 设置布局文件
+        mPopupWindow.setContentView(LayoutInflater.from(this).inflate(R.layout.window_add, null));// 为了避免部分机型不显示，需要重新设置一下宽高
+        mPopupWindow.setWidth(ViewGroup.LayoutParams.WRAP_CONTENT);
+        mPopupWindow.setHeight(ViewGroup.LayoutParams.WRAP_CONTENT);
+        mPopupWindow.setBackgroundDrawable(new ColorDrawable(0x0000));// 设置pop透明效果
+        mPopupWindow.setFocusable(true);// 设置pop获取焦点，如果为false点击返回按钮会退出当前Activity，如果pop中有Editor的话，focusable必须要为true
+        mPopupWindow.setTouchable(true);// 设置pop可点击，为false点击事件无效，默认为true
+        mPopupWindow.setOutsideTouchable(true);// 设置点击pop外侧消失，默认为false；在focusable为true时点击外侧始终消失
+        mPopupWindow.showAsDropDown(ivAdd, -100, 0);// 相对于 + 号正下面，同时可以设置偏移量
+        // 设置pop关闭监听，用于改变背景透明度
+        mPopupWindow.setOnDismissListener(new PopupWindow.OnDismissListener() {//关闭弹窗
+            @Override
+            public void onDismiss() {
+            //    mPopupWindow.dismiss();
+            }
+        });
+        //绑定布局中的控件
+        TextView changeCity = mPopupWindow.getContentView().findViewById(R.id.tv_change_city);
+        TextView searchCity = mPopupWindow.getContentView().findViewById(R.id.tv_search_city);
+        TextView more = mPopupWindow.getContentView().findViewById(R.id.tv_more);
+        changeCity.setOnClickListener(view -> {//切换城市
+            showCityWindow();
+            mPopupWindow.dismiss();
+        });
+        searchCity.setOnClickListener(view -> {//切换城市
+            startActivity(new Intent(context, SearchCityActivity.class));
+            mPopupWindow.dismiss();
+        });
+        more.setOnClickListener(view -> {//更多功能
+            ToastUtils.showShortToast(context,"待研发");
+            mPopupWindow.dismiss();
+        });
+    }
+
+
     private void showCityWindow() {
         provinceList = new ArrayList<>();
         citylist = new ArrayList<>();
@@ -466,9 +520,9 @@ public class MainActivity extends MvpActivity<WeatherContract.WeatherPresenter> 
     }
 
     //点击事件
-    @OnClick(R.id.iv_city_select)
+    @OnClick(R.id.iv_add)
     public void onViewClicked() {//显示城市弹窗
-        showCityWindow();
+        showAddWindow();
     }
 
 

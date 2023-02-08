@@ -11,7 +11,6 @@ import com.example.mvplibrary1.R;
 
 public class RecyclerViewAnimation {
 
-
     //数据变化时显示动画  右侧动画
     public static void runLayoutAnimationRight(final RecyclerView recyclerView) {
         final Context context = recyclerView.getContext();

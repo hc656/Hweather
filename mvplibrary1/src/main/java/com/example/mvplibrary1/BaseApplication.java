@@ -6,6 +6,8 @@ import android.content.Context;
 import android.content.res.Configuration;
 import com.example.mvplibrary1.utils.ActivityManager;
 
+import java.util.Arrays;
+
 
 public class BaseApplication extends Application {
     private static ActivityManager activityManager;
@@ -19,7 +21,8 @@ public class BaseApplication extends Application {
         activityManager=new ActivityManager();
         context = getApplicationContext();
         application=this;
-
+        int []a = {1,2,3};
+        Arrays.sort(a);
     }
 
 

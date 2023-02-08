@@ -51,12 +51,10 @@ public abstract class BaseActivity extends AppCompatActivity implements UiCallBa
     }
     //弹窗消失
     public void dismissLoadingDialog(){
+        mDialog.dismiss();
         if (mDialog != null) {
-            mDialog.dismiss();
         }
         mDialog = null;
     }
-
-
 }
 

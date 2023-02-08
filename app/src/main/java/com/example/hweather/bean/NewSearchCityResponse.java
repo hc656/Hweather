@@ -1,5 +1,6 @@
 package com.example.hweather.bean;
 
+
 import java.util.List;
 
 public class NewSearchCityResponse {

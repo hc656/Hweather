@@ -20,7 +20,7 @@ public class ServiceGenerator {
             case 1://必应每日一图
                 BASE_URL = "https://cn.bing.com";
                 break;
-            case 2:
+            case 2://获取地区编号等信息
                 BASE_URL = "https://geoapi.qweather.com";
                 break;
         }
@@ -54,6 +54,5 @@ public class ServiceGenerator {
                 .build();
         return retrofit.create(serviceClass);
     }
-
 }
 
